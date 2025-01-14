@@ -13,10 +13,11 @@ function isAuthenticated() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Онлайн консультации с врачами">
-    <title>МедОнлайн - Онлайн консультации с врачами</title>
+    <title>Карасукская ЦРБ - Онлайн консультации с врачами</title>
     
     <!-- Подключение стилей -->
     <link rel="stylesheet" href="lib/scss/font-awesome.scss">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles/settings.css">
     <link rel="stylesheet" href="styles/pages/index.css">
     
@@ -29,14 +30,14 @@ function isAuthenticated() {
         <div class="container">
             <div class="header__wrapper">
                 <a href="/" class="logo">
-                    <img src= "img/logo.png" alt="МедОнлайн">
+                    <img src= "img/logo2.png" alt="ЦРБ Карасук онлайн">
                 </a>
                 
                 <nav class="main-nav">
                     <ul class="main-nav__list">
                         <li><a href="/specialists">Врачи</a></li>
                         <li><a href="/services">Услуги</a></li>
-                        <li><a href="/prices">Цены</a></li>
+                        <li><a href="/prices">Прайс-листы</a></li>
                         <li><a href="/about">О нас</a></li>
                     </ul>
                 </nav>
@@ -56,7 +57,7 @@ function isAuthenticated() {
     <main>
         <section class="hero">
             <div class="container">
-                <h1 class="hero__title">Онлайн консультации с проверенными врачами</h1>
+                <h1 class="hero__title">Консультации у врчей теперь онлайн!</h1>
                 <p class="hero__subtitle">Получите профессиональную консультацию врача, не выходя из дома</p>
                 
                 <div class="search-form">
@@ -98,12 +99,12 @@ function isAuthenticated() {
         <!-- Преимущества -->
         <section class="benefits">
             <div class="container">
-                <h2 class="section-title">Почему выбирают нас</h2>
+                <h2 class="section-title">Почему онлайн лучше?</h2>
                 <div class="benefits__grid">
                     <div class="benefit-card">
                         <i class="fa fa-certificate"></i>
-                        <h3>Проверенные врачи</h3>
-                        <p>Все специалисты имеют подтвержденное образование и лицензии</p>
+                        <h3>меньшее время ожидания</h3>
+                        <p>Особенно при записи на онлайн консультацию заранее</p>
                     </div>
                     <div class="benefit-card">
                         <i class="fa fa-clock"></i>
@@ -137,7 +138,7 @@ function isAuthenticated() {
                     <div class="step">
                         <div class="step__number">3</div>
                         <h3>Получите консультацию</h3>
-                        <p>Общайтесь с врачом через чат и, по завершению, вам выдадут направление </p>
+                        <p>Общайтесь с врачом через чат и, по завершению, вам выдадут справку</p>
                     </div>
                 </div>
             </div>
@@ -149,7 +150,7 @@ function isAuthenticated() {
         <div class="container">
             <div class="footer__grid">
                 <div class="footer__column">
-                    <h4>О компании</h4>
+                    <h4>О ЦРБ</h4>
                     <ul>
                         <li><a href="/about">О нас</a></li>
                         <li><a href="/doctors">Врачи</a></li>
@@ -176,11 +177,11 @@ function isAuthenticated() {
                 <div class="footer__column">
                     <h4>Контакты</h4>
                     <ul>
-                        <li>Телефон: 8 (800) 100-20-30</li>
-                        <li>Email: info@medonline.ru</li>
+                        <li><a href="tel:+79001234567">+7 (900) 123-45-67</a></li>
+                        <li><a href="mailto:CRBKarasukOnline@mail.ru">Email: CRBKarasukOnline@mail.ru</a></li>
                         <li>
                             <div class="social-links">
-                                <a href="#" class="social-link"><i class="fab fa-vk"></i></a>
+                                <a href="#" class="social-link"><i class="fab fa-vk" aria-hidden="true"></i></a>
                                 <a href="#" class="social-link"><i class="fab fa-telegram"></i></a>
                                 <a href="#" class="social-link"><i class="fab fa-whatsapp"></i></a>
                             </div>
@@ -189,7 +190,7 @@ function isAuthenticated() {
                 </div>
             </div>
             <div class="footer__bottom">
-                <p>&copy; <?php echo date('Y'); ?> МедОнлайн. Все права защищены.</p>
+                <p>&copy; <?php echo date('Y'); ?> Карасукская ЦРБ. Все права защищены.</p>
             </div>
         </div>
     </footer>
