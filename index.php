@@ -44,9 +44,9 @@ function isAuthenticated() {
 
                 <div class="user-actions">
                     <!-- <?php if (isAuthenticated()): ?> -->
-                        <a href="/profile" class="btn btn--secondary">Личный кабинет</a>
+                        <a href="profile.php" class="btn btn--secondary">Личный кабинет</a>
                     <!-- <?php else: ?> -->
-                        <a href="/login" class="btn btn--primary">Войти</a>
+                        <a href="login.php" class="btn btn--primary">Войти</a>
                     <!-- <?php endif; ?> -->
                 </div>
             </div>
@@ -57,7 +57,7 @@ function isAuthenticated() {
     <main>
         <section class="hero">
             <div class="container">
-                <h1 class="hero__title">Консультации у врчей теперь онлайн!</h1>
+                <h1 class="hero__title">Консультации у врачей теперь онлайн!</h1>
                 <p class="hero__subtitle">Получите профессиональную консультацию врача, не выходя из дома</p>
                 
                 <div class="search-form">

@@ -302,3 +302,47 @@ main {
     clip: rect(0, 0, 0, 0);
     border: 0;
 }
+
+.user-type-selector {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.user-type-selector label {
+    margin: 0 15px;
+    cursor: pointer;
+}
+
+.user-type-selector input[type="radio"] {
+    margin-right: 5px;
+}
+
+/* Стили для выпадающего списка */
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    color: var(--text-color);
+    background-color: #fff;
+    transition: border-color 0.3s;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+select:required:invalid {
+    color: #666;
+}
+
+/* Стили для опций */
+option {
+    color: var(--text-color);
+}
+
+option:first-child {
+    color: #666;
+}

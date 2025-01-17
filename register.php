@@ -1,27 +1,27 @@
 <?php session_start();
-// include_once('api/db.php');
+include_once('api/db.php');
 function isAuthenticated() {
     return false;
 }
-// if(array_key_exists('token', $_SESSION)){
-//     $token=$_SESSION['token'];
-//     $userId = $db->query("SELECT id FROM users WHERE api_token= '$token'")->fetchAll();
-//     if(!empty($userId)){
-//         header('Location: user.php');
-//     }
-// }
+if(array_key_exists('token', $_SESSION)){
+    $token=$_SESSION['token'];
+    $userId = $db->query("SELECT id FROM users WHERE api_token= '$token'")->fetchAll();
+    if(!empty($userId)){
+        header('Location: user.php');
+    }
+}
 
-// function showError($field){     
-//     if(!array_key_exists('register-errors', $_SESSION)){
-//         echo '';
-//     } else {
-//         $listErrors = $_SESSION['register-errors']; 
-//         if (array_key_exists($field, $listErrors)){  
-//             $error = implode(',', $listErrors[$field]); 
-//             echo "<span class='error'>$error</span>";
-//         }    
-//     }
-// }
+function showError($field){     
+    if(!array_key_exists('register-errors', $_SESSION)){
+        echo '';
+    } else {
+        $listErrors = $_SESSION['register-errors']; 
+        if (array_key_exists($field, $listErrors)){  
+            $error = implode(',', $listErrors[$field]); 
+            echo "<span class='error'>$error</span>";
+        }    
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -71,17 +71,36 @@ function isAuthenticated() {
             <form method="POST" action="api/registrationUser.php" class="register-form">
                 <div class="user-type-selector">
                     <label>
-                        <input type="radio" name="user_type" value="patient" checked> Пациент
+                        <input type="radio" name="user_type" value="patient" checked onchange="toggleSpecialization()"> Пациент
                     </label>
                     <label>
-                        <input type="radio" name="user_type" value="doctor"> Врач
+                        <input type="radio" name="user_type" value="doctor" onchange="toggleSpecialization()"> Врач
                     </label>
+                </div>
+
+                <!-- Поле специализации (изначально скрыто) -->
+                <div class="form-group" id="specialization-group" style="display: none;">
+                    <label for="specialization">Специализация *</label>
+                    <select name="specialization" id="specialization">
+                        <option value="">Выберите специализацию</option>
+                        <option value="Терапевт">Терапевт</option>
+                        <option value="Кардиолог">Кардиолог</option>
+                        <option value="Невролог">Невролог</option>
+                        <option value="Хирург">Хирург</option>
+                        <option value="Педиатр">Педиатр</option>
+                        <option value="Офтальмолог">Офтальмолог</option>
+                        <option value="Стоматолог">Стоматолог</option>
+                        <option value="Эндокринолог">Эндокринолог</option>
+                        <option value="Гинеколог">Гинеколог</option>
+                        <option value="Дерматолог">Дерматолог</option>
+                    </select>
+                    <?php showError('specialization') ?>
                 </div>
 
                 <div class="form-group">
                     <label for="surname">Фамилия *</label>
                     <input type="text" name="surname" id="surname" required>
-                    
+                    <?php showError('surname') ?>
                 </div>
 
                 <div class="form-group">
@@ -191,6 +210,24 @@ function isAuthenticated() {
             let x = e.target.value.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
             e.target.value = !x[2] ? x[1] : '+7 (' + x[2] + (x[3] ? ') ' + x[3] : '') + (x[4] ? '-' + x[4] : '') + (x[5] ? '-' + x[5] : '');
         });
+
+        function toggleSpecialization() {
+            const userType = document.querySelector('input[name="user_type"]:checked').value;
+            const specializationGroup = document.getElementById('specialization-group');
+            const specializationSelect = document.getElementById('specialization');
+            
+            if (userType === 'doctor') {
+                specializationGroup.style.display = 'block';
+                specializationSelect.required = true;
+            } else {
+                specializationGroup.style.display = 'none';
+                specializationSelect.required = false;
+                specializationSelect.value = ''; // Очищаем значение при переключении на пациента
+            }
+        }
+
+        // Вызываем функцию при загрузке страницы для установки начального состояния
+        document.addEventListener('DOMContentLoaded', toggleSpecialization);
     </script>
 </body>
 </html>
