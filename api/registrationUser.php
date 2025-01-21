@@ -3,10 +3,7 @@ session_start();
 include_once './db.php';
 
 if ($_SERVER['REQUEST_METHOD'] == "POST") {
-    // Очищаем данные от лишних пробелов
-    $formData = array_map('trim', $_POST);
-    
-    // Определяем обязательные поля
+    $formData = array_map('trim', $_POST); // Очищаем данные от лишних пробелов
     $fields = [
         'name',
         'surname',
@@ -16,122 +13,81 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
         'password_confirm',
         'agree'
     ];
-
-    // Добавляем проверку специализации для врачей
-    if (isset($formData['user_type']) && $formData['user_type'] === 'doctor') {
-        $fields[] = 'specialization';
-    }
-    
     $errors = [];
 
-    // Защита от XSS
     foreach($formData as $key => $value){
         $formData[$key] = htmlspecialchars($value);
     }
-
-    // Проверка заполненности обязательных полей
+ 
+    // Базовая проверка на заполненность
     foreach ($fields as $field) {
         if (!isset($formData[$field]) || empty($formData[$field])) {
-            $errors[$field][] = 'Поле обязательно для заполнения';
-        }
-    }
-
-    // Дополнительная проверка для врачей
-    if (isset($formData['user_type']) && $formData['user_type'] === 'doctor' && empty($formData['specialization'])) {
-        $errors['specialization'][] = 'Выберите специализацию';
-    }
-
-    // Валидация email
-    if (!empty($formData['email']) && !filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) {
-        $errors['email'][] = 'Некорректный формат email';
-    }
-
-    // Валидация телефона
-    if (!empty($formData['phone'])) {
-        $phone = preg_replace('/[^0-9+]/', '', $formData['phone']);
-        if (!preg_match('/^\+7[0-9]{10}$/', $phone)) {
-            $errors['phone'][] = 'Некорректный формат телефона';
+            $errors[$field][] = 'Заполните это поле';
         }
     }
 
     // Проверка паролей
-    if (!empty($formData['password'])) {
-        if (strlen($formData['password']) < 6) {
-            $errors['password'][] = 'Пароль должен быть не менее 6 символов';
-        }
-        if ($formData['password'] !== $formData['password_confirm']) {
-            $errors['password_confirm'][] = 'Пароли не совпадают';
-        }
+    if ($formData['password'] !== $formData['password_confirm']) {
+        $errors['password_confirm'][] = 'Пароли не совпадают';
     }
 
     // Проверка уникальности email и телефона
-    if (empty($errors['email']) && empty($errors['phone'])) {
-        $stmt = $db->prepare("SELECT email, phone FROM users WHERE email = ? OR phone = ?");
-        $stmt->execute([$formData['email'], $formData['phone']]);
-        $user = $stmt->fetch();
-
-        if ($user) {
-            if ($user['email'] == $formData['email']) {
-                $errors['email'][] = 'Этот email уже зарегистрирован';
-            }
-            if ($user['phone'] == $formData['phone']) {
-                $errors['phone'][] = 'Этот номер телефона уже зарегистрирован';
-            }
+    $stmt = $db->prepare("SELECT phone, email FROM users WHERE phone = ? OR email = ?");
+    $stmt->execute([$formData['phone'], $formData['email']]);
+    $user = $stmt->fetch();
+    
+    if ($user) {
+        if ($user['phone'] == $formData['phone']) {
+            $errors['phone'][] = 'Этот номер телефона уже зарегистрирован';
+        }
+        if ($user['email'] == $formData['email']) {
+            $errors['email'][] = 'Этот email уже зарегистрирован';
         }
     }
 
-    // Если нет ошибок, сохраняем пользователя
+    // Если нет ошибок, регистрируем пользователя
     if (empty($errors)) {
         try {
-            // Хешируем пароль
-            $hashedPassword = password_hash($formData['password'], PASSWORD_DEFAULT);
-            
             // Определяем тип пользователя
-            $userType = isset($formData['user_type']) ? $formData['user_type'] : 'patient';
+            $userType = isset($formData['user_type']) && $formData['user_type'] === 'doctor' ? 'doctor' : 'patient';
             
-            // Подготавливаем и выполняем запрос
             $stmt = $db->prepare("
                 INSERT INTO users (
-                    name, 
-                    surname, 
-                    patronymic, 
-                    email, 
-                    phone, 
-                    password, 
-                    agree, 
+                    name,
+                    surname,
+                    email,
+                    phone,
+                    password,
+                    agree,
                     type,
                     specialization
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $result = $stmt->execute([
                 $formData['name'],
                 $formData['surname'],
-                $formData['patronymic'] ?? null,
                 $formData['email'],
                 $formData['phone'],
-                $hashedPassword,
+                password_hash($formData['password'], PASSWORD_DEFAULT),
                 $formData['agree'] ? 1 : 0,
                 $userType,
-                ($userType === 'doctor') ? $formData['specialization'] : null
+                ($userType === 'doctor' && isset($formData['specialization'])) ? $formData['specialization'] : null
             ]);
 
             if ($result) {
-                // Очищаем ошибки и перенаправляем на страницу входа
-                unset($_SESSION['register-errors']);
+                $_SESSION['register-success'] = true;
                 header('Location: ../login.php');
                 exit;
             } else {
                 throw new Exception('Ошибка при выполнении запроса');
             }
-
         } catch (Exception $e) {
+            error_log('Registration error: ' . $e->getMessage());
             $errors['system'][] = 'Ошибка при регистрации. Попробуйте позже.';
-            error_log($e->getMessage());
         }
     }
 
-    // Если есть ошибки, сохраняем их в сессию и возвращаемся на форму
     if (!empty($errors)) {
         $_SESSION['register-errors'] = $errors;
         header('Location: ../register.php');
@@ -139,8 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
     }
 }
 
-// Добавим отладочный код
-if (!empty($errors)) {
-    error_log('Registration errors: ' . print_r($errors, true));
-}
+// Добавим отладочную информацию
+error_log('POST data: ' . print_r($_POST, true));
 ?> 

@@ -4,10 +4,25 @@ include_once('api/db.php');
 
 if(array_key_exists('token', $_SESSION)){
     $token = $_SESSION['token'];
-    $userId = $db->query("SELECT id FROM users WHERE api_token = '$token'")->fetchAll();
+    $stmt = $db->prepare("SELECT id, type FROM users WHERE api_token = ?");
+    $stmt->execute([$token]);
+    $user = $stmt->fetch();
     
-    if(!empty($userId)){
-        header('Location: user.php');
+    if($user){
+        // Перенаправляем в зависимости от типа пользователя
+        switch($user['type']) {
+            case 'doctor':
+                header('Location: doctor.php');
+                break;
+            case 'admin':
+                header('Location: admin.php');
+                break;
+            case 'patient':
+            default:
+                header('Location: user.php');
+                break;
+        }
+        exit;
     }
 }
 ?>
@@ -27,14 +42,13 @@ if(array_key_exists('token', $_SESSION)){
             <p>Введите ваши учетные данные</p>
         </div>
 
-        <form method="POST" action="api/auth.php" class="login-form">
+        <form method="POST" action="api/authUser.php" class="login-form">
             <div class="form-group">
                 <label for="email">Электронная почта</label>
                 <input type="email" name="email" id="email" required>
                 <?php 
-                if(isset($_SESSION['login-error'])) {
-                    echo "<span class='error'>" . $_SESSION['login-error'] . "</span>";
-                    unset($_SESSION['login-error']);
+                if(isset($_SESSION['login-errors']['email'])) {
+                    echo "<span class='error'>" . implode(', ', $_SESSION['login-errors']['email']) . "</span>";
                 }
                 ?>
             </div>
@@ -42,6 +56,11 @@ if(array_key_exists('token', $_SESSION)){
             <div class="form-group">
                 <label for="password">Пароль</label>
                 <input type="password" name="password" id="password" required>
+                <?php 
+                if(isset($_SESSION['login-errors']['password'])) {
+                    echo "<span class='error'>" . implode(', ', $_SESSION['login-errors']['password']) . "</span>";
+                }
+                ?>
             </div>
 
             <div class="remember-me">
@@ -58,5 +77,12 @@ if(array_key_exists('token', $_SESSION)){
             </div>
         </form>
     </div>
+
+    <?php 
+    // Очищаем ошибки после отображения
+    if(isset($_SESSION['login-errors'])) {
+        unset($_SESSION['login-errors']);
+    }
+    ?>
 </body>
 </html>

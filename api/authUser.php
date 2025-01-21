@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
     
     $fields = [
         'email',
-        'password',
+        'password'
     ];
     $errors = [];
 
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
         try {
             // Получаем пользователя по email
             $stmt = $db->prepare("
-                SELECT id, email, password, type, name 
+                SELECT id, email, password, type 
                 FROM users 
                 WHERE email = ?
             ");
@@ -39,13 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                 $errors['email'][] = 'Пользователь не найден';
             } else {
                 // Проверяем пароль
-                if (!password_verify($formData['password'], $user['password'])) {
-                    $errors['password'][] = 'Неверный пароль';
-                } else {
-                    // Генерируем новый токен
-                    $hash = bin2hex(random_bytes(32));
-                    $token = base64_encode($hash);
-
+                if (password_verify($formData['password'], $user['password'])) {
+                    // Генерируем токен
+                    $token = bin2hex(random_bytes(32));
+                    
                     // Обновляем токен в базе
                     $stmt = $db->prepare("
                         UPDATE users 
@@ -56,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
 
                     // Сохраняем данные в сессию
                     $_SESSION['token'] = $token;
-                    $_SESSION['user_name'] = $user['name'];
                     $_SESSION['user_type'] = $user['type'];
 
                     // Перенаправляем в зависимости от типа пользователя
@@ -73,17 +69,19 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
                             break;
                     }
                     exit;
+                } else {
+                    $errors['password'][] = 'Неверный пароль';
                 }
             }
-        } catch (PDOException $e) {
-            $errors['system'][] = 'Ошибка авторизации. Попробуйте позже.';
+        } catch (Exception $e) {
             error_log($e->getMessage());
+            $errors['system'][] = 'Ошибка авторизации';
         }
     }
 
     // Если есть ошибки
     if (!empty($errors)) {
-        $_SESSION['login-error'] = $errors;
+        $_SESSION['login-errors'] = $errors;
         header('Location: ../login.php');
         exit;
     }
