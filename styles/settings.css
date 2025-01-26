@@ -156,15 +156,11 @@ table {
   
   /* Настольные компьютеры */
   @media(max-width: 1400px) {
-    body{
-       
-      }
+    
   }
    /* Ноутбуки */
   @media(max-width: 1200px) {
-      body{
-        
-      }
+     
   }
   .error{
     color: red;

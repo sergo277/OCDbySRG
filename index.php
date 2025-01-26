@@ -1,10 +1,15 @@
 <?php
+// Инициализация сессии
 session_start();
+
+// Подключение к базе данных
+include_once('api/db.php');
+
 // require_once 'config/database.php';
 // require_once 'includes/functions.php';
-function isAuthenticated() {
-    return false;
-}
+// function isAuthenticated() {
+//     return false;
+// }
 ?>
 
 <!DOCTYPE html>
@@ -25,33 +30,8 @@ function isAuthenticated() {
     <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
 </head>
 <body>
-    <!-- Шапка сайта -->
-    <header class="header">
-        <div class="container">
-            <div class="header__wrapper">
-                <a href="/" class="logo">
-                    <img src= "img/logo2.png" alt="ЦРБ Карасук онлайн">
-                </a>
-                
-                <nav class="main-nav">
-                    <ul class="main-nav__list">
-                        <li><a href="/specialists">Врачи</a></li>
-                        <li><a href="/services">Услуги</a></li>
-                        <li><a href="/prices">Прайс-листы</a></li>
-                        <li><a href="/about">О нас</a></li>
-                    </ul>
-                </nav>
-
-                <div class="user-actions">
-                    <!-- <?php if (isAuthenticated()): ?> -->
-                        <a href="profile.php" class="btn btn--secondary">Личный кабинет</a>
-                    <!-- <?php else: ?> -->
-                        <a href="login.php" class="btn btn--primary">Войти</a>
-                    <!-- <?php endif; ?> -->
-                </div>
-            </div>
-        </div>
-    </header>
+    <!-- Подключаем шапку -->
+    <?php include 'includes/header.php'; ?>
 
     <!-- Главный экран -->
     <main>
@@ -61,12 +41,12 @@ function isAuthenticated() {
                 <p class="hero__subtitle">Получите профессиональную консультацию врача, не выходя из дома</p>
                 
                 <div class="search-form">
-                    <form action="/search" method="GET">
+                    <form action="doctors.php" method="GET" class="search-form">
                         <div class="search-form__wrapper">
-                            <input type="text" 
-                                   name="query" 
-                                   placeholder="Поиск врача по специальности или имени"
-                                   class="search-form__input">
+                            <input class= "search-form__input" type="text" 
+                                   name="search" 
+                                   placeholder="Поиск врача по ФИО или специализации"
+                                   required>
                             <button type="submit" class="btn btn--primary">Найти врача</button>
                         </div>
                     </form>
@@ -145,55 +125,8 @@ function isAuthenticated() {
         </section>
     </main>
 
-    <!-- Подвал -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer__grid">
-                <div class="footer__column">
-                    <h4>О ЦРБ</h4>
-                    <ul>
-                        <li><a href="/about">О нас</a></li>
-                        <li><a href="/doctors">Врачи</a></li>
-                        <li><a href="/reviews">Отзывы</a></li>
-                        <li><a href="/contacts">Контакты</a></li>
-                    </ul>
-                </div>
-                <div class="footer__column">
-                    <h4>Пациентам</h4>
-                    <ul>
-                        <li><a href="/how-it-works">Как это работает</a></li>
-                        <li><a href="/faq">Частые вопросы</a></li>
-                        <li><a href="/blog">Блог о здоровье</a></li>
-                    </ul>
-                </div>
-                <div class="footer__column">
-                    <h4>Документы</h4>
-                    <ul>
-                        <li><a href="/privacy">Политика конфиденциальности</a></li>
-                        <li><a href="/terms">Пользовательское соглашение</a></li>
-                        <li><a href="/license">Лицензии</a></li>
-                    </ul>
-                </div>
-                <div class="footer__column">
-                    <h4>Контакты</h4>
-                    <ul>
-                        <li><a href="tel:+79001234567">+7 (900) 123-45-67</a></li>
-                        <li><a href="mailto:CRBKarasukOnline@mail.ru">Email: CRBKarasukOnline@mail.ru</a></li>
-                        <li>
-                            <div class="social-links">
-                                <a href="#" class="social-link"><i class="fab fa-vk" aria-hidden="true"></i></a>
-                                <a href="#" class="social-link"><i class="fab fa-telegram"></i></a>
-                                <a href="#" class="social-link"><i class="fab fa-whatsapp"></i></a>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer__bottom">
-                <p>&copy; <?php echo date('Y'); ?> Карасукская ЦРБ. Все права защищены.</p>
-            </div>
-        </div>
-    </footer>
+    <!-- Подключаем подвал -->
+    <?php include 'includes/footer.php'; ?>
 
     <!-- Подключение скриптов -->
     <!-- <script src="assets/js/main.js"></script> -->

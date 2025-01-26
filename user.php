@@ -19,6 +19,14 @@ if (!$user) {
     exit;
 }
 
+// Получаем документы пользователя
+$stmt = $db->prepare("
+    SELECT * FROM personal_documents 
+    WHERE user_id = ?
+");
+$stmt->execute([$user['id']]);
+$documents = $stmt->fetch();
+
 // Получаем список врачей
 $stmt = $db->query("
     SELECT id, name, surname, patronymic, specialization 
@@ -27,6 +35,26 @@ $stmt = $db->query("
     ORDER BY specialization, surname
 ");
 $doctors = $stmt->fetchAll();
+
+// Получаем историю приёмов
+$stmt = $db->prepare("
+    SELECT 
+        a.id,
+        a.appointment_date,
+        a.appointment_time,
+        a.status,
+        a.complaint,
+        d.surname as doctor_surname,
+        d.name as doctor_name,
+        d.patronymic as doctor_patronymic,
+        d.specialization
+    FROM appointments a
+    JOIN users d ON a.doctor_id = d.id
+    WHERE a.patient_id = ?
+    ORDER BY a.appointment_date DESC, a.appointment_time DESC
+");
+$stmt->execute([$user['id']]);
+$appointments = $stmt->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -46,7 +74,7 @@ $doctors = $stmt->fetchAll();
             <div class="header__wrapper">
                 <div class="logo">
                     <a href="index.php">
-                        <img src="images/logo.png" alt="Логотип ЦРБ">
+                        <img src="img/logo2.png" alt="Логотип ЦРБ">
                     </a>
                 </div>
                 <nav class="main-nav">
@@ -96,27 +124,6 @@ $doctors = $stmt->fetchAll();
                         <input type="tel" name="phone" value="<?= htmlspecialchars($user['phone']) ?>" required>
                     </div>
 
-                    <!-- Паспортные данные -->
-                    <h3>Паспортные данные</h3>
-                    <div class="form-group">
-                        <label>Серия паспорта</label>
-                        <input type="text" name="passport_series" pattern="\d{4}" maxlength="4" 
-                               placeholder="0000" value="<?= htmlspecialchars($user['passport_series'] ?? '') ?>">
-                    </div>
-                    <div class="form-group">
-                        <label>Номер паспорта</label>
-                        <input type="text" name="passport_number" pattern="\d{6}" maxlength="6" 
-                               placeholder="000000" value="<?= htmlspecialchars($user['passport_number'] ?? '') ?>">
-                    </div>
-
-                    <!-- СНИЛС -->
-                    <h3>СНИЛС</h3>
-                    <div class="form-group">
-                        <label>Номер СНИЛС</label>
-                        <input type="text" name="snils" pattern="\d{3}-\d{3}-\d{3} \d{2}" 
-                               placeholder="000-000-000 00" value="<?= htmlspecialchars($user['snils'] ?? '') ?>">
-                    </div>
-
                     <button type="submit" class="btn btn--primary">Сохранить изменения</button>
                 </form>
             </div>
@@ -136,6 +143,102 @@ $doctors = $stmt->fetchAll();
                     </div>
                     <?php endforeach; ?>
                 </div>
+            </div>
+
+            <!-- После блока doctors-list -->
+            <div class="profile-section">
+                <h2>История приёмов</h2>
+                <div class="appointments-list">
+                    <?php if (empty($appointments)): ?>
+                        <p class="no-data">История приёмов пуста</p>
+                    <?php else: ?>
+                        <?php foreach ($appointments as $appointment): ?>
+                            <div class="appointment-card">
+                                <div class="appointment-header">
+                                    <div class="appointment-date">
+                                        <i class="far fa-calendar-alt"></i>
+                                        <?= date('d.m.Y', strtotime($appointment['appointment_date'])) ?>
+                                        <i class="far fa-clock"></i>
+                                        <?= date('H:i', strtotime($appointment['appointment_time'])) ?>
+                                    </div>
+                                    <span class="appointment-status status-<?= strtolower($appointment['status']) ?>">
+                                        <?php
+                                        $statusText = [
+                                            'pending' => 'Ожидает подтверждения',
+                                            'confirmed' => 'Подтверждён',
+                                            'completed' => 'Завершён',
+                                            'cancelled' => 'Отменён'
+                                        ];
+                                        echo $statusText[$appointment['status']] ?? $appointment['status'];
+                                        ?>
+                                    </span>
+                                </div>
+                                <div class="appointment-doctor">
+                                    <h4>Врач:</h4>
+                                    <p><?= htmlspecialchars($appointment['doctor_surname'] . ' ' . 
+                                                          $appointment['doctor_name'] . ' ' . 
+                                                          $appointment['doctor_patronymic']) ?></p>
+                                    <p class="specialization"><?= htmlspecialchars($appointment['specialization']) ?></p>
+                                </div>
+                                <?php if (!empty($appointment['complaint'])): ?>
+                                    <div class="appointment-details">
+                                        <div class="complaint">
+                                            <h4>Жалобы:</h4>
+                                            <p><?= htmlspecialchars($appointment['complaint']) ?></p>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- В секции личных данных добавляем: -->
+            <div class="profile-section">
+                <h2>Документы</h2>
+                <form id="documentsForm" class="profile-form">
+                    <div class="documents-grid">
+                        <!-- Паспортные данные -->
+                        <div class="document-section">
+                            <h3>Паспортные данные</h3>
+                            <div class="form-group">
+                                <label>Серия паспорта</label>
+                                <input type="text" name="passport_series" 
+                                       value="<?= htmlspecialchars($documents['passport_series'] ?? '') ?>" 
+                                       pattern="\d{4}" maxlength="4" placeholder="0000">
+                            </div>
+                            <div class="form-group">
+                                <label>Номер паспорта</label>
+                                <input type="text" name="passport_number" 
+                                       value="<?= htmlspecialchars($documents['passport_number'] ?? '') ?>" 
+                                       pattern="\d{6}" maxlength="6" placeholder="000000">
+                            </div>
+                            <div class="form-group">
+                                <label>Кем выдан</label>
+                                <input type="text" name="passport_issued_by" 
+                                       value="<?= htmlspecialchars($documents['passport_issued_by'] ?? '') ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Дата выдачи</label>
+                                <input type="date" name="passport_issue_date" 
+                                       value="<?= htmlspecialchars($documents['passport_issue_date'] ?? '') ?>">
+                            </div>
+                        </div>
+
+                        <!-- СНИЛС -->
+                        <div class="document-section">
+                            <h3>СНИЛС</h3>
+                            <div class="form-group">
+                                <label>Номер СНИЛС</label>
+                                <input type="text" name="snils" 
+                                       value="<?= htmlspecialchars($documents['snils'] ?? '') ?>" 
+                                       placeholder="000-000-000 00">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn--primary">Сохранить документы</button>
+                </form>
             </div>
         </div>
     </main>
@@ -237,6 +340,39 @@ $doctors = $stmt->fetchAll();
         function startConsultation(doctorId) {
             window.location.href = `consultation.php?doctor_id=${doctorId}`;
         }
+
+        document.getElementById('documentsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+
+            fetch('api/updateDocuments.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Документы успешно сохранены');
+                } else {
+                    alert(data.error || 'Ошибка сохранения документов');
+                }
+            })
+            .catch(error => {
+                alert('Произошла ошибка при сохранении документов');
+                console.error(error);
+            });
+        });
+
+        // Маска для серии паспорта
+        document.querySelector('input[name="passport_series"]').addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '').substr(0, 4);
+        });
+
+        // Маска для номера паспорта
+        document.querySelector('input[name="passport_number"]').addEventListener('input', function(e) {
+            e.target.value = e.target.value.replace(/\D/g, '').substr(0, 6);
+        });
     </script>
 </body>
 </html>
