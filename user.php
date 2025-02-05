@@ -66,6 +66,9 @@ $appointments = $stmt->fetchAll();
     <link rel="stylesheet" href="styles/settings.css">
     <link rel="stylesheet" href="styles/pages/user.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="styles/modal.css">
+    <link rel="stylesheet" href="styles/consultation.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
 <body>
    <!-- Шапка сайта -->
@@ -188,6 +191,13 @@ $appointments = $stmt->fetchAll();
                                         </div>
                                     </div>
                                 <?php endif; ?>
+                                <?php if ($appointment['status'] === 'confirmed'): ?>
+                                    <div class="appointment-actions">
+                                        <button class="btn btn--primary" onclick="startConsultation(<?= $appointment['id'] ?>)">
+                                            Открыть чат с врачом
+                                        </button>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -298,81 +308,293 @@ $appointments = $stmt->fetchAll();
     <div id="doctorModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <div id="doctorInfo"></div>
+            <div id="app">
+                <div class="doctor-info" v-if="doctor">
+                    <h2>{{ doctor.full_name }}</h2>
+                    <p class="specialization">{{ doctor.specialization }}</p>
+                    <p class="contacts">
+                        <span v-if="doctor.phone"><i class="fas fa-phone"></i> {{ doctor.phone }}</span>
+                        <span v-if="doctor.email"><i class="fas fa-envelope"></i> {{ doctor.email }}</span>
+                    </p>
+                    
+                    <div class="appointment-form">
+                        <h3>Записаться на приём</h3>
+                        <div class="calendar">
+                            <div class="calendar-header">
+                                <button @click="prevMonth">&lt;</button>
+                                <span>{{ currentMonthYear }}</span>
+                                <button @click="nextMonth">&gt;</button>
+                            </div>
+                            <div class="calendar-grid">
+                                <div v-for="day in daysOfWeek" :key="day" class="calendar-day-header">
+                                    {{ day }}
+                                </div>
+                                <div v-for="date in calendarDays" 
+                                     :key="date.date"
+                                     :class="['calendar-day', {
+                                         'disabled': !isDateAvailable(date.date),
+                                         'selected': selectedDate === date.date
+                                     }]"
+                                     @click="selectDate(date.date)">
+                                    {{ date.dayOfMonth }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-if="selectedDate" class="time-slots">
+                            <h4>Доступное время:</h4>
+                            <div class="time-grid">
+                                <button v-for="time in availableTimeSlots"
+                                        :key="time"
+                                        :class="['time-slot', { selected: selectedTime === time }]"
+                                        @click="selectTime(time)">
+                                    {{ time }}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div v-if="selectedDate && selectedTime" class="complaint-section">
+                            <h4>Опишите ваши симптомы:</h4>
+                            <textarea v-model="complaint" 
+                                     placeholder="Кратко опишите причину обращения"
+                                     rows="4"></textarea>
+                        </div>
+                        
+                        <button class="btn btn--primary" 
+                                @click="submitAppointment"
+                                :disabled="!canSubmit">
+                            Записаться на приём
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для консультации -->
+    <div id="consultationModal" class="modal">
+        <div class="modal-content consultation-modal">
+            <span class="close" onclick="closeConsultation()">&times;</span>
+            <div id="consultationApp">
+                <div class="consultation-header">
+                    <h2>Консультация</h2>
+                    <div v-if="doctorInfo" class="doctor-info">
+                        <p>Врач: {{ doctorInfo.surname }} {{ doctorInfo.name }} {{ doctorInfo.patronymic }}</p>
+                        <p>Специализация: {{ doctorInfo.specialization }}</p>
+                    </div>
+                </div>
+                
+                <div class="chat-container" ref="chatContainer">
+                    <div v-if="messages.length === 0" class="no-messages">
+                        Начните консультацию
+                    </div>
+                    <div v-for="message in messages" :key="message.id" 
+                         :class="['message', message.sender_id === currentUserId ? 'message-own' : 'message-other']">
+                        <div class="message-header">
+                            <span class="message-sender">{{ message.surname }} {{ message.name }}</span>
+                            <span class="message-time">{{ formatTime(message.created_at) }}</span>
+                        </div>
+                        <div class="message-content">{{ message.message }}</div>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <textarea v-model="newMessage" 
+                             @keyup.enter="sendMessage"
+                             placeholder="Введите сообщение..."
+                             rows="2"></textarea>
+                    <button @click="sendMessage" 
+                            :disabled="!newMessage.trim()"
+                            class="btn btn--primary">
+                        Отправить
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Маска для СНИЛС
-        document.querySelector('input[name="snils"]').addEventListener('input', function(e) {
-            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,3})(\d{0,2})/);
-            e.target.value = !x[2] ? x[1] : x[1] + '-' + x[2] + (x[3] ? '-' + x[3] : '') + (x[4] ? ' ' + x[4] : '');
-        });
+    // Маска для СНИЛС
+    document.querySelector('input[name="snils"]').addEventListener('input', function(e) {
+        let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,3})(\d{0,2})/);
+        e.target.value = !x[2] ? x[1] : x[1] + '-' + x[2] + (x[3] ? '-' + x[3] : '') + (x[4] ? ' ' + x[4] : '');
+    });
 
-        // Функция для отображения информации о враче
-        function showDoctorInfo(doctorId) {
-            fetch(`api/getDoctorInfo.php?id=${doctorId}`)
-                .then(response => response.json())
-                .then(data => {
-                    const modal = document.getElementById('doctorModal');
-                    const doctorInfo = document.getElementById('doctorInfo');
-                    
-                    doctorInfo.innerHTML = `
-                        <h2>${data.surname} ${data.name} ${data.patronymic}</h2>
-                        <p class="specialization">${data.specialization}</p>
-                        <p class="experience">Стаж работы: ${data.experience_years} лет</p>
-                        <p class="about">${data.about_doctor || 'Информация отсутствует'}</p>
-                        <button class="btn btn--primary" onclick="startConsultation(${doctorId})">
-                            Начать онлайн консультацию
-                        </button>
-                    `;
-                    
-                    modal.style.display = 'block';
-                });
-        }
+    // Инициализация Vue приложения
+    const { createApp } = Vue;
 
-        // Закрытие модального окна
-        document.querySelector('.close').onclick = function() {
-            document.getElementById('doctorModal').style.display = 'none';
-        }
-
-        // Начать консультацию
-        function startConsultation(doctorId) {
-            window.location.href = `consultation.php?doctor_id=${doctorId}`;
-        }
-
-        document.getElementById('documentsForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-
-            fetch('api/updateDocuments.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Документы успешно сохранены');
-                } else {
-                    alert(data.error || 'Ошибка сохранения документов');
+    const app = createApp({
+        data() {
+            return {
+                doctor: null,
+                currentDate: new Date(),
+                selectedDate: null,
+                selectedTime: null,
+                complaint: '',
+                bookedSlots: [],
+                daysOfWeek: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                timeSlots: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', 
+                           '14:00', '14:30', '15:00', '15:30', '16:00', '16:30']
+            }
+        },
+        computed: {
+            currentMonthYear() {
+                return this.currentDate.toLocaleString('ru', { month: 'long', year: 'numeric' });
+            },
+            calendarDays() {
+                // Логика формирования дней календаря
+                const days = [];
+                const year = this.currentDate.getFullYear();
+                const month = this.currentDate.getMonth();
+                
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                
+                // Добавляем пустые дни в начало
+                let firstDayOfWeek = firstDay.getDay() || 7;
+                for (let i = 1; i < firstDayOfWeek; i++) {
+                    days.push({ date: null, dayOfMonth: '' });
                 }
-            })
-            .catch(error => {
-                alert('Произошла ошибка при сохранении документов');
-                console.error(error);
-            });
-        });
+                
+                // Добавляем дни месяца
+                for (let i = 1; i <= lastDay.getDate(); i++) {
+                    const date = new Date(year, month, i);
+                    days.push({
+                        date: date.toISOString().split('T')[0],
+                        dayOfMonth: i
+                    });
+                }
+                
+                return days;
+            },
+            availableTimeSlots() {
+                if (!this.selectedDate) return [];
+                
+                return this.timeSlots.filter(time => {
+                    return !this.bookedSlots.some(slot => 
+                        slot.appointment_date === this.selectedDate && 
+                        slot.appointment_time === time + ':00'
+                    );
+                });
+            },
+            canSubmit() {
+                return this.selectedDate && this.selectedTime && this.complaint.trim();
+            }
+        },
+        methods: {
+            async loadDoctorInfo(doctorId) {
+                try {
+                    const response = await fetch(`api/getDoctorInfo.php?id=${doctorId}`);
+                    this.doctor = await response.json();
+                    this.loadBookedSlots();
+                } catch (error) {
+                    console.error('Ошибка загрузки информации о враче:', error);
+                }
+            },
+            async loadBookedSlots() {
+                try {
+                    const response = await fetch(`api/getDoctorSchedule.php?doctor_id=${this.doctor.id}`);
+                    const data = await response.json();
+                    this.bookedSlots = data.booked_slots;
+                } catch (error) {
+                    console.error('Ошибка загрузки расписания:', error);
+                }
+            },
+            prevMonth() {
+                this.currentDate = new Date(this.currentDate.getFullYear(), 
+                                          this.currentDate.getMonth() - 1);
+            },
+            nextMonth() {
+                this.currentDate = new Date(this.currentDate.getFullYear(), 
+                                          this.currentDate.getMonth() + 1);
+            },
+            isDateAvailable(date) {
+                if (!date) return false;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return new Date(date) >= today;
+            },
+            selectDate(date) {
+                if (this.isDateAvailable(date)) {
+                    this.selectedDate = date;
+                    this.selectedTime = null;
+                }
+            },
+            selectTime(time) {
+                this.selectedTime = time;
+            },
+            async submitAppointment() {
+                if (!this.canSubmit) return;
 
-        // Маска для серии паспорта
-        document.querySelector('input[name="passport_series"]').addEventListener('input', function(e) {
-            e.target.value = e.target.value.replace(/\D/g, '').substr(0, 4);
-        });
+                const formData = new FormData();
+                formData.append('doctor_id', this.doctor.id);
+                formData.append('appointment_date', this.selectedDate);
+                formData.append('appointment_time', this.selectedTime);
+                formData.append('complaint', this.complaint);
 
-        // Маска для номера паспорта
-        document.querySelector('input[name="passport_number"]').addEventListener('input', function(e) {
-            e.target.value = e.target.value.replace(/\D/g, '').substr(0, 6);
+                try {
+                    const response = await fetch('api/createAppointment.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('Запись успешно создана');
+                        location.reload();
+                    } else {
+                        alert(result.error || 'Ошибка при создании записи');
+                    }
+                } catch (error) {
+                    console.error('Ошибка:', error);
+                    alert('Произошла ошибка при создании записи');
+                }
+            }
+        }
+    }).mount('#app');
+
+    // Обновляем функцию показа модального окна
+    function showDoctorInfo(doctorId) {
+        const modal = document.getElementById('doctorModal');
+        modal.style.display = 'block';
+        app.loadDoctorInfo(doctorId);
+    }
+
+    document.getElementById('documentsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+
+        fetch('api/updateDocuments.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Документы успешно сохранены');
+            } else {
+                alert(data.error || 'Ошибка сохранения документов');
+            }
+        })
+        .catch(error => {
+            alert('Произошла ошибка при сохранении документов');
+            console.error(error);
         });
+    });
+
+    // Маска для серии паспорта
+    document.querySelector('input[name="passport_series"]').addEventListener('input', function(e) {
+        e.target.value = e.target.value.replace(/\D/g, '').substr(0, 4);
+    });
+
+    // Маска для номера паспорта
+    document.querySelector('input[name="passport_number"]').addEventListener('input', function(e) {
+        e.target.value = e.target.value.replace(/\D/g, '').substr(0, 6);
+    });
     </script>
+
+    <script src="js/modal.js"></script>
+    <script src="js/patient-consultation.js"></script>
 </body>
 </html>

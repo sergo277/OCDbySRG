@@ -58,6 +58,39 @@ body {
     color: var(--primary-color);
 }
 
+
+.appointment-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.appointment-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.status-pending {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.status-confirmed {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.status-cancelled {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.status-completed {
+    background-color: #e0e7ff;
+    color: #3730a3;
+}
+
 /* Кнопки */
 .btn {
     display: inline-block;

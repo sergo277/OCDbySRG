@@ -38,13 +38,16 @@ $stmt = $db->prepare("
         p.surname as patient_surname,
         p.name as patient_name,
         p.patronymic as patient_patronymic,
-        p.phone as patient_phone
+        p.phone as patient_phone,
+        CASE 
+            WHEN a.appointment_date > CURRENT_DATE THEN 'future'
+            WHEN a.appointment_date = CURRENT_DATE AND a.appointment_time >= CURRENT_TIME THEN 'today'
+            ELSE 'past'
+        END as time_status
     FROM appointments a
     JOIN users p ON a.patient_id = p.id
     WHERE a.doctor_id = ? 
     AND a.status IN ('pending', 'confirmed')
-    AND (a.appointment_date > CURRENT_DATE 
-        OR (a.appointment_date = CURRENT_DATE AND a.appointment_time >= CURRENT_TIME))
     ORDER BY a.appointment_date ASC, a.appointment_time ASC
 ");
 $stmt->execute([$doctor['id']]);
@@ -64,14 +67,18 @@ $stmt = $db->prepare("
     FROM appointments a
     JOIN users p ON a.patient_id = p.id
     WHERE a.doctor_id = ? 
-    AND (a.status = 'completed' 
-        OR a.status = 'cancelled'
+    AND (
+        a.status IN ('completed', 'cancelled')
         OR a.appointment_date < CURRENT_DATE
-        OR (a.appointment_date = CURRENT_DATE AND a.appointment_time < CURRENT_TIME))
+        OR (a.appointment_date = CURRENT_DATE AND a.appointment_time < CURRENT_TIME)
+    )
     ORDER BY a.appointment_date DESC, a.appointment_time DESC
 ");
 $stmt->execute([$doctor['id']]);
 $past_appointments = $stmt->fetchAll();
+
+// Временно раскомментируйте для отладки
+// var_dump($upcoming_appointments);
 ?>
 
 <!DOCTYPE html>
@@ -83,6 +90,8 @@ $past_appointments = $stmt->fetchAll();
     <link rel="stylesheet" href="styles/settings.css">
     <link rel="stylesheet" href="styles/pages/doctor.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="styles/consultation.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
 <body>
     <!-- Шапка сайта -->
@@ -396,8 +405,54 @@ $past_appointments = $stmt->fetchAll();
         }
 
         function startConsultation(appointmentId) {
-            window.location.href = `consultation.php?appointment_id=${appointmentId}`;
+            const modal = document.getElementById('consultationModal');
+            modal.style.display = 'block';
+            consultationApp.appointmentId = appointmentId;
+            consultationApp.loadMessages();
         }
     </script>
+
+    <!-- Модальное окно для консультации (добавить перед закрывающим тегом body) -->
+    <div id="consultationModal" class="modal">
+        <div class="modal-content consultation-modal">
+            <span class="close" onclick="closeConsultation()">&times;</span>
+            <div id="consultationApp">
+                <div class="consultation-header">
+                    <h2>Консультация</h2>
+                    <div v-if="patientInfo" class="patient-info">
+                        <p>Пациент: {{ patientInfo.surname }} {{ patientInfo.name }} {{ patientInfo.patronymic }}</p>
+                        <p>Жалобы: {{ patientInfo.complaint }}</p>
+                    </div>
+                </div>
+                
+                <div class="chat-container" ref="chatContainer">
+                    <div v-if="messages.length === 0" class="no-messages">
+                        Начните консультацию
+                    </div>
+                    <div v-for="message in messages" :key="message.id" 
+                         :class="['message', message.sender_id === currentUserId ? 'message-own' : 'message-other']">
+                        <div class="message-header">
+                            <span class="message-sender">{{ message.surname }} {{ message.name }}</span>
+                            <span class="message-time">{{ formatTime(message.created_at) }}</span>
+                        </div>
+                        <div class="message-content">{{ message.message }}</div>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <textarea v-model="newMessage" 
+                             @keyup.enter="sendMessage"
+                             placeholder="Введите сообщение..."
+                             rows="2"></textarea>
+                    <button @click="sendMessage" 
+                            :disabled="!newMessage.trim()"
+                            class="btn btn--primary">
+                        Отправить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/consultation.js"></script>
 </body>
 </html>
